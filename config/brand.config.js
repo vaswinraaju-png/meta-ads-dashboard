@@ -35,11 +35,12 @@ window.BRAND = {
     muted:     "#65676b"
   },
 
+  // Ads Manager uses a plain system sans everywhere — no display font
   fonts: {
-    display: "'Sora', sans-serif",   // big numbers / headings
-    body:    "'Inter', sans-serif",  // everything else
-    mono:    "'JetBrains Mono', monospace" // figures / data
+    display: "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif",
+    body:    "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif",
+    mono:    "'Roboto Mono',monospace"
   },
 
-  fontImportUrl: "https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+  fontImportUrl: "https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap"
 };

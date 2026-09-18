@@ -57,22 +57,23 @@ function renderProgress(rows){
 function renderTable(rows){
   const levelLabel = APP.currentAd!=='ALL' ? 'Ad View' : APP.currentAdset!=='ALL' ? 'Adset View' : APP.currentCamp!=='ALL' ? 'Campaign View' : 'Adset Breakdown';
   el('tbl-label').textContent = levelLabel;
-  const t = loadTargets();
   const tbody = el('camp-tbody');
   if(!rows.length){ tbody.innerHTML = '<tr><td colspan="9" class="text-muted" style="padding:20px 14px">No data for this filter</td></tr>'; return; }
   tbody.innerHTML = rows.map(c=>{
     const cpl = c.leads>0 ? fmtC(c.spend/c.leads) : '—';
     const ctr = c.impressions>0 ? (c.clicks/c.impressions*100).toFixed(2)+'%' : '—';
     const level = c.id ? 'Ad' : 'Adset';
+    const active = c.spend>0;
     return `<tr>
-      <td title="${escapeHtml(c.name)}">${escapeHtml(trunc(c.name,32))}</td>
-      <td><span style="font-size:9px;padding:2px 7px;border-radius:5px;background:var(--c-surface2);color:var(--c-muted);font-weight:700">${level}</span></td>
+      <td title="${escapeHtml(c.name)}" class="cell-link">${escapeHtml(trunc(c.name,32))}</td>
+      <td><span class="status-dot${active?'':' off'}">${active?'Active':'Inactive'}</span></td>
+      <td>${level}</td>
       <td class="mono">${fmtC(c.spend)}</td>
       <td class="mono">${fmt(c.impressions)}</td>
       <td class="mono">${fmt(c.clicks)}</td>
+      <td class="mono">${ctr}</td>
       <td class="mono">${fmt(Math.round(c.leads))}</td>
       <td class="mono">${cpl}</td>
-      <td class="mono">${ctr}</td>
     </tr>`;
   }).join('');
 }
