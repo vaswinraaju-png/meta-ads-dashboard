@@ -1,0 +1,50 @@
+/* ── APP SHELL ── */
+.app-header{position:sticky;top:0;z-index:100;background:var(--c-primary);border-bottom:2px solid var(--c-accent);}
+.app-header-inner{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.25rem;gap:1rem;flex-wrap:wrap;}
+.brand-block{display:flex;align-items:center;gap:10px;}
+.brand-logo{height:32px;width:32px;object-fit:contain;border-radius:6px;}
+.brand-name{font-family:var(--f-display);font-size:15px;letter-spacing:.02em;color:#fff;}
+.brand-sub{font-size:9px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.14em;margin-top:1px;}
+
+.header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.icon-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:600;padding:7px 12px;border-radius:8px;transition:background .15s;}
+.icon-btn:hover{background:rgba(255,255,255,.16);}
+.icon-btn.danger{color:#ff8a80;}
+
+/* ── TOP TAB NAV (replaces sidebar) ── */
+.tab-nav{background:var(--c-bg);border-bottom:1px solid var(--c-border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tab-btn{padding:12px 20px;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--c-muted);background:transparent;border:none;border-bottom:3px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;}
+.tab-btn:hover{color:var(--c-text);}
+.tab-btn.active{color:var(--c-primary);border-bottom-color:var(--c-accent);}
+
+/* ── CONTROL STRIP ── */
+.control-strip{background:var(--c-surface);border-bottom:1px solid var(--c-border);padding:.85rem 1.25rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.control-strip .field-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--c-muted);}
+.control-strip select,.control-strip input[type=date]{background:#fff;border:1px solid var(--c-border2);color:var(--c-text);font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;outline:none;}
+.control-strip select:focus,.control-strip input:focus{border-color:var(--c-accent2);}
+.btn-primary{background:var(--c-primary);color:var(--c-accent);font-weight:700;font-size:11px;padding:8px 20px;border:none;border-radius:7px;letter-spacing:.03em;transition:opacity .15s;}
+.btn-primary:hover{opacity:.85;}
+.btn-secondary{background:#fff;color:var(--c-text);font-weight:600;font-size:11px;padding:7px 14px;border:1px solid var(--c-border2);border-radius:7px;}
+.btn-secondary:hover{background:var(--c-surface2);}
+.btn-danger-outline{background:#fff;color:var(--c-danger);font-weight:600;font-size:11px;padding:7px 14px;border:1px solid #f3c2c0;border-radius:7px;}
+
+/* ── MAIN / PAGES ── */
+.app-main{padding:1.5rem;max-width:1600px;margin:0 auto;}
+.page-view{display:none;}
+.page-view.active{display:block;}
+
+.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--c-muted);font-weight:700;margin:1.5rem 0 .75rem;}
+.section-title:first-child{margin-top:0;}
+
+/* Messages */
+.msg-error{background:#fff1f0;border:1px solid #f3c2c0;color:var(--c-danger);border-radius:9px;padding:10px 14px;font-size:12px;margin-bottom:1rem;}
+.msg-loading{color:var(--c-muted);font-size:12px;padding:6px 0;font-family:var(--f-mono);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .app-main{padding:.85rem;}
+  .brand-name{font-size:13px;}
+  .control-strip{gap:8px;}
+  .control-strip select{flex:1;min-width:120px;}
+  .tab-btn{padding:10px 14px;font-size:10px;}
+}

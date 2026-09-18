@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ads Dashboard</title>
+<link rel="icon" id="favicon" type="image/png" href="logo.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header-inner">
+    <div class="brand-block">
+      <img class="brand-logo" id="brand-logo" src="" alt="Logo">
+      <div>
+        <div class="brand-name" id="brand-name">Agency</div>
+        <div class="brand-sub" id="brand-sub">Ads Dashboard</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn danger" onclick="handleLogout()">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchPage('overview')">Overview</button>
+  <button class="tab-btn" onclick="switchPage('creatives')">Creatives</button>
+  <button class="tab-btn" onclick="switchPage('social')">Social</button>
+</nav>
+
+<div class="control-strip">
+  <span class="field-lbl">Campaign</span>
+  <select id="camp-select" onchange="setCampFilter(this.value)" disabled><option value="ALL">All Campaigns</option></select>
+  <span class="field-lbl">Adset</span>
+  <select id="adset-select" onchange="setAdsetFilter(this.value)" disabled><option value="ALL">All Adsets</option></select>
+  <span class="field-lbl">Ad</span>
+  <select id="ad-select" onchange="setAdFilter(this.value)" disabled><option value="ALL">All Ads</option></select>
+  <span class="field-lbl">From</span>
+  <input type="date" id="dt-from">
+  <span class="field-lbl">To</span>
+  <input type="date" id="dt-to">
+  <button class="btn-primary" onclick="fetchAll()">Fetch Data</button>
+</div>
+
+<main class="app-main">
+  <div id="error-box" class="msg-error hidden"></div>
+  <div id="loading-box" class="msg-loading hidden">Fetching from Facebook Graph API</div>
+
+  <!-- ══ OVERVIEW ══ -->
+  <div class="page-view active" id="page-overview">
+    <div class="section-title">Key Metrics</div>
+    <div class="stat-grid">
+      <div class="stat-tile"><div class="stat-tile-lbl">Spend</div><div class="stat-tile-val accent" id="k-spend">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Budget</div><div class="stat-tile-val" id="k-totbudget">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Used %</div><div class="stat-tile-val" id="k-budgetpct">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Leads</div><div class="stat-tile-val" id="k-leads">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Target</div><div class="stat-tile-val" id="k-leadtgt">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Hit %</div><div class="stat-tile-val" id="k-leadpct">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">CPL</div><div class="stat-tile-val" id="k-cpl">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">CTR</div><div class="stat-tile-val" id="k-ctr">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">CPM</div><div class="stat-tile-val" id="k-cpm">—</div></div>
+      <div class="stat-tile"><div class="stat-tile-lbl">Freq</div><div class="stat-tile-val" id="k-freq">—</div></div>
+    </div>
+
+    <div class="section-title">Targets</div>
+    <div class="progress-row">
+      <div class="progress-card">
+        <div class="progress-card-title">Leads · Target vs Achieved</div>
+        <div class="progress-main"><div class="progress-big" id="pg-leads-val">—</div><div class="progress-of" id="pg-leads-of">of — target</div></div>
+        <div class="progress-track"><div class="progress-fill" id="pg-leads-fill" style="width:0%;background:var(--c-accent)"></div></div>
+        <div class="progress-meta"><span id="pg-leads-gap">—</span><span id="pg-leads-pct">—</span></div>
+      </div>
+      <div class="progress-card">
+        <div class="progress-card-title">Budget · Allocated vs Utilised</div>
+        <div class="progress-main"><div class="progress-big" id="pg-budget-val" style="color:var(--c-accent2)">—</div><div class="progress-of" id="pg-budget-of">of — allocated</div></div>
+        <div class="progress-track"><div class="progress-fill" id="pg-budget-fill" style="width:0%;background:var(--c-accent2)"></div></div>
+        <div class="progress-meta"><span id="pg-budget-gap">—</span><span id="pg-budget-pct">—</span></div>
+      </div>
+    </div>
+
+    <div class="section-title">Monthly Plan</div>
+    <div class="plan-box">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <div>
+          <div class="field-lbl" style="font-size:9px;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px;">Budget target</div>
+          <input type="number" id="plan-budget" placeholder="e.g. 500000" style="padding:7px 10px;border:1px solid var(--c-border2);border-radius:7px;font-family:var(--f-mono);font-size:12px;width:160px;">
+        </div>
+        <div>
+          <div class="field-lbl" style="font-size:9px;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px;">Lead target</div>
+          <input type="number" id="plan-leads" placeholder="e.g. 2000" style="padding:7px 10px;border:1px solid var(--c-border2);border-radius:7px;font-family:var(--f-mono);font-size:12px;width:160px;">
+        </div>
+      </div>
+      <div class="plan-actions">
+        <button class="pill-btn dark" onclick="applyPlan()">Save Plan</button>
+        <button class="pill-btn" onclick="clearPlan()">Clear</button>
+      </div>
+      <div id="plan-ok" class="hidden" style="font-size:11px;color:var(--c-success);"></div>
+    </div>
+
+    <div class="section-title">Daily Spend</div>
+    <div class="chart-card">
+      <div style="position:relative;height:200px"><canvas id="dailyChart"></canvas></div>
+      <div class="chart-legend"><span class="legend-chip"><span class="legend-dot" style="background:var(--c-accent2)"></span>Actual</span><span class="legend-chip"><span class="legend-dot" style="background:var(--c-border2)"></span>Paced</span></div>
+    </div>
+
+    <div class="section-title" id="tbl-label">Breakdown</div>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Name</th><th>Level</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Leads</th><th>CPL</th><th>CTR</th></tr></thead>
+          <tbody id="camp-tbody"><tr><td colspan="8" class="text-muted" style="padding:20px 14px">Click Fetch Data to load</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CREATIVES ══ -->
+  <div class="page-view" id="page-creatives">
+    <div class="creative-toolbar">
+      <div class="section-title" style="margin:0">Ad Creatives</div>
+      <button class="btn-secondary" onclick="fetchCreatives()" id="btn-load-creatives">Load Creatives</button>
+      <span class="text-muted" id="creative-count" style="font-size:11px;"></span>
+      <span class="text-muted" id="creative-load-status" style="font-size:11px;"></span>
+    </div>
+
+    <div class="creative-detail" id="creative-detail">
+      <button class="cd-close" onclick="closeCreativeDetail()">✕</button>
+      <div class="cd-preview">
+        <img id="cd-img" src="" alt="Creative" onerror="this.style.display='none';document.getElementById('cd-img-ph').style.display='flex'">
+        <div class="cd-img-ph" id="cd-img-ph" style="display:none">No preview</div>
+      </div>
+      <div class="cd-info">
+        <div class="text-muted" id="cd-campaign" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;color:rgba(255,255,255,.45)"></div>
+        <div class="cd-headline" id="cd-headline">—</div>
+        <div class="cd-field"><div class="cd-field-lbl">Primary Text</div><div class="cd-field-val" id="cd-primary">—</div></div>
+        <div class="cd-field"><div class="cd-field-lbl">Description</div><div class="cd-field-val" id="cd-desc">—</div></div>
+        <div class="cd-field"><div class="cd-field-lbl">Ad Name</div><div class="cd-field-val mono" id="cd-adname" style="font-size:10px;opacity:.7">—</div></div>
+        <div class="cd-kpis">
+          <div class="cd-kpi"><div class="cd-kpi-val" id="cd-spend">—</div><div class="cd-kpi-lbl">Spend</div></div>
+          <div class="cd-kpi"><div class="cd-kpi-val" id="cd-leads">—</div><div class="cd-kpi-lbl">Leads</div></div>
+          <div class="cd-kpi"><div class="cd-kpi-val" id="cd-cpl">—</div><div class="cd-kpi-lbl">CPL</div></div>
+          <div class="cd-kpi"><div class="cd-kpi-val" id="cd-ctr">—</div><div class="cd-kpi-lbl">CTR</div></div>
+          <div class="cd-kpi"><div class="cd-kpi-val" id="cd-imp">—</div><div class="cd-kpi-lbl">Impr.</div></div>
+          <div class="cd-kpi"><div class="cd-kpi-val" id="cd-clicks">—</div><div class="cd-kpi-lbl">Clicks</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="creative-grid" id="creatives-grid">
+      <div class="empty-state" style="grid-column:1/-1">Fetch data on Overview, then Load Creatives</div>
+    </div>
+  </div>
+
+  <!-- ══ SOCIAL ══ -->
+  <div class="page-view" id="page-social">
+    <div class="social-config">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;">
+        <div class="section-title" style="color:rgba(255,255,255,.45);margin:0">Social Accounts</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:10px;color:rgba(255,255,255,.4)">From</span>
+          <input type="date" id="soc-from" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-family:var(--f-mono);font-size:11px;padding:7px 10px;border-radius:7px;outline:none;color-scheme:dark;">
+          <span style="font-size:10px;color:rgba(255,255,255,.4)">to</span>
+          <input type="date" id="soc-to" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font-family:var(--f-mono);font-size:11px;padding:7px 10px;border-radius:7px;outline:none;color-scheme:dark;">
+          <button class="btn-primary" onclick="fetchSocial()" id="btn-fetch-social">Fetch Social</button>
+        </div>
+      </div>
+      <div id="soc-error" class="hidden" style="font-size:11px;color:#ff9090;margin-top:8px;"></div>
+      <div id="soc-loading" class="hidden" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:8px;font-family:var(--f-mono);"></div>
+    </div>
+
+    <div class="social-subtabs">
+      <button class="social-subtab active" id="soc-tab-ig" onclick="switchSocTab('ig')">Instagram</button>
+      <button class="social-subtab" id="soc-tab-fb" onclick="switchSocTab('fb')">Facebook Page</button>
+    </div>
+
+    <!-- IG -->
+    <div id="soc-page-ig">
+      <div class="section-title">Account Overview</div>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="stat-tile-lbl">Followers</div><div class="stat-tile-val" id="ig-followers">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Following</div><div class="stat-tile-val" id="ig-following">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Posts</div><div class="stat-tile-val" id="ig-media-count">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Avg Eng Rate</div><div class="stat-tile-val" id="ig-eng-rate">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Top Content</div><div class="stat-tile-val" id="ig-top-type" style="font-size:14px">—</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:1.25rem 0;">
+        <div class="insight-card"><div class="insight-lbl">Follower Growth Rate</div><div class="insight-val" id="ig-growth-rate">—</div><div class="insight-sub" id="ig-growth-sub">vs previous period</div></div>
+        <div class="insight-card"><div class="insight-lbl">Best Day to Post</div><div class="insight-val" style="color:var(--c-accent2)" id="ig-best-day">—</div><div class="insight-sub" id="ig-best-day-sub">Highest avg engagement</div></div>
+        <div class="insight-card"><div class="insight-lbl">Saves Rate</div><div class="insight-val" style="color:var(--c-success)" id="ig-saves-rate">—</div><div class="insight-sub">Saves ÷ Reach</div></div>
+        <div class="insight-card"><div class="insight-lbl">Share Rate</div><div class="insight-val" style="color:var(--c-warning)" id="ig-share-rate">—</div><div class="insight-sub">Shares ÷ Reach</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:1.25rem;">
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Impressions & Reach</div><div style="position:relative;height:200px"><canvas id="ig-trend-chart"></canvas></div></div>
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Media Type Breakdown</div><div style="position:relative;height:200px"><canvas id="ig-media-chart"></canvas></div><div class="chart-legend" id="ig-media-legend"></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.25rem;">
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Daily Follower Change</div><div style="position:relative;height:160px"><canvas id="ig-followers-chart"></canvas></div></div>
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Engagement by Content Type</div><div style="position:relative;height:160px"><canvas id="ig-eng-type-chart"></canvas></div><div class="chart-legend" id="ig-eng-type-legend"></div></div>
+      </div>
+
+      <div class="social-subtabs">
+        <button class="social-subtab active" id="ig-sub-posts" onclick="switchIGSub('posts')">Posts & Creatives</button>
+        <button class="social-subtab" id="ig-sub-dms" onclick="switchIGSub('dms')">Direct Messages</button>
+      </div>
+
+      <div id="ig-panel-posts">
+        <div class="table-card">
+          <div class="table-card-hdr">
+            <div class="section-title" style="margin:0">Media Performance</div>
+            <div style="display:flex;gap:6px;">
+              <select id="ig-type-filter" onchange="renderIGMedia()"><option value="ALL">All Types</option><option value="IMAGE">Image</option><option value="VIDEO">Video</option><option value="CAROUSEL_ALBUM">Carousel</option><option value="REELS">Reels</option></select>
+              <select id="ig-media-sort" onchange="renderIGMedia()"><option value="engagement">Sort: Engagement</option><option value="reach">Sort: Reach</option><option value="impressions">Sort: Impressions</option><option value="likes">Sort: Likes</option><option value="date">Sort: Date</option></select>
+              <span class="text-muted" id="ig-media-count-label" style="font-size:11px;"></span>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th></th><th>Caption</th><th>Type</th><th>Date</th><th>Impr.</th><th>Reach</th><th>Likes</th><th>Comments</th><th>Saved</th><th>Shares</th><th>Views</th><th>Eng Rate</th><th>Saves Rate</th></tr></thead>
+              <tbody id="ig-media-tbody"><tr><td colspan="13" class="text-muted" style="padding:20px 14px">Fetch social data</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="ig-panel-dms" style="display:none;">
+        <div class="stat-grid" style="margin-bottom:1rem;">
+          <div class="stat-tile"><div class="stat-tile-lbl">Total Threads</div><div class="stat-tile-val" id="ig-dm-total">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Unresponded</div><div class="stat-tile-val" style="color:var(--c-warning)" id="ig-dm-unresponded">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Unread</div><div class="stat-tile-val" style="color:var(--c-danger)" id="ig-dm-unread">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Response Rate</div><div class="stat-tile-val" id="ig-dm-rate">—</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-card-hdr"><div class="section-title" style="margin:0">DM Conversations</div><span class="text-muted" id="ig-dm-count" style="font-size:11px;"></span></div>
+          <div class="table-scroll"><table><thead><tr><th>User</th><th>Last Message</th><th>Time</th><th>Status</th><th>Unread</th></tr></thead><tbody id="ig-dm-tbody"><tr><td colspan="5" class="text-muted" style="padding:20px 14px">Fetch social data</td></tr></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FB -->
+    <div id="soc-page-fb" style="display:none;">
+      <div class="section-title">Page Overview</div>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="stat-tile-lbl">Followers</div><div class="stat-tile-val" id="fb-followers">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Impressions</div><div class="stat-tile-val" id="fb-impressions">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Organic Reach</div><div class="stat-tile-val" id="fb-reach-org">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Paid Reach</div><div class="stat-tile-val" id="fb-reach-paid">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Engaged Users</div><div class="stat-tile-val" id="fb-engaged">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Post Engagements</div><div class="stat-tile-val" id="fb-post-eng">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Page Views</div><div class="stat-tile-val" id="fb-views">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Video Views</div><div class="stat-tile-val" id="fb-video-views">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Net Followers</div><div class="stat-tile-val" id="fb-net-followers">—</div></div>
+        <div class="stat-tile"><div class="stat-tile-lbl">Organic %</div><div class="stat-tile-val" id="fb-org-pct" style="font-size:16px">—</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:1.25rem 0;">
+        <div class="insight-card"><div class="insight-lbl">Engagement Rate</div><div class="insight-val" id="fb-eng-rate">—</div><div class="insight-sub">Engaged ÷ Reach</div></div>
+        <div class="insight-card"><div class="insight-lbl">Avg Post Reach</div><div class="insight-val" style="color:var(--c-accent2)" id="fb-avg-reach">—</div><div class="insight-sub" id="fb-avg-reach-sub"></div></div>
+        <div class="insight-card"><div class="insight-lbl">Click-through Rate</div><div class="insight-val" style="color:var(--c-success)" id="fb-page-ctr">—</div><div class="insight-sub">Clicks ÷ Impressions</div></div>
+        <div class="insight-card"><div class="insight-lbl">Inbox Response Rate</div><div class="insight-val" style="color:var(--c-warning)" id="fb-inbox-rate">—</div><div class="insight-sub" id="fb-inbox-sub"></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:1.25rem;">
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Impressions & Reach</div><div style="position:relative;height:200px"><canvas id="fb-trend-chart"></canvas></div></div>
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Reactions Breakdown</div><div style="position:relative;height:200px"><canvas id="fb-reactions-chart"></canvas></div><div class="chart-legend" id="fb-reactions-legend"></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.25rem;">
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Daily Follower Growth</div><div style="position:relative;height:160px"><canvas id="fb-followers-chart"></canvas></div></div>
+        <div class="chart-card"><div class="section-title" style="margin-top:0">Page Views by Source</div><div style="position:relative;height:160px"><canvas id="fb-views-chart"></canvas></div><div class="chart-legend" id="fb-views-legend"></div></div>
+      </div>
+
+      <div class="social-subtabs">
+        <button class="social-subtab active" id="fb-sub-posts" onclick="switchFBSub('posts')">Posts & Creatives</button>
+        <button class="social-subtab" id="fb-sub-inbox" onclick="switchFBSub('inbox')">Message Inbox</button>
+      </div>
+
+      <div id="fb-panel-posts">
+        <div class="table-card">
+          <div class="table-card-hdr">
+            <div class="section-title" style="margin:0">Posts Performance</div>
+            <div style="display:flex;gap:6px;">
+              <select id="fb-post-sort" onchange="renderFBPosts()"><option value="engagement">Sort: Engagement</option><option value="reach">Sort: Reach</option><option value="impressions">Sort: Impressions</option><option value="date">Sort: Date</option></select>
+              <span class="text-muted" id="fb-post-count" style="font-size:11px;"></span>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table><thead><tr><th></th><th>Post</th><th>Date</th><th>Impr.</th><th>Reach</th><th>Engaged</th><th>Clicks</th><th>Reactions</th><th>Video Views</th><th>Eng Rate</th></tr></thead><tbody id="fb-posts-tbody"><tr><td colspan="10" class="text-muted" style="padding:20px 14px">Fetch social data</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div id="fb-panel-inbox" style="display:none;">
+        <div class="stat-grid" style="margin-bottom:1rem;">
+          <div class="stat-tile"><div class="stat-tile-lbl">Total Conversations</div><div class="stat-tile-val" id="fb-conv-total">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Unread</div><div class="stat-tile-val" style="color:var(--c-danger)" id="fb-conv-unread">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Unresponded</div><div class="stat-tile-val" style="color:var(--c-warning)" id="fb-conv-unresponded">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Responded</div><div class="stat-tile-val" style="color:var(--c-success)" id="fb-conv-responded">—</div></div>
+          <div class="stat-tile"><div class="stat-tile-lbl">Response Rate</div><div class="stat-tile-val" id="fb-conv-rate">—</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-card-hdr">
+            <div class="section-title" style="margin:0">Conversations</div>
+            <select id="fb-conv-filter" onchange="renderFBConversations()"><option value="ALL">All</option><option value="unresponded">Unresponded Only</option><option value="unread">Unread Only</option></select>
+          </div>
+          <div class="table-scroll"><table><thead><tr><th>Sender</th><th>Last Message</th><th>Time</th><th>Status</th><th>Unread</th></tr></thead><tbody id="fb-conv-tbody"><tr><td colspan="5" class="text-muted" style="padding:20px 14px">Fetch social data</td></tr></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="config/brand.config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/pages/overview.js"></script>
+<script src="js/pages/creatives.js"></script>
+<script src="js/pages/social.js"></script>
+<script>
+function switchPage(p){
+  document.querySelectorAll('.page-view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+  el('page-'+p).classList.add('active');
+  const idx={overview:0,creatives:1,social:2}[p]||0;
+  document.querySelectorAll('.tab-btn')[idx]?.classList.add('active');
+  if(p==='social' && !window._socFetched){ window._socFetched=true; fetchSocial(); }
+}
+async function handleLogout(){
+  await fetch('/auth/logout', {method:'POST'});
+  window.location.href = '/login.html';
+}
+window.addEventListener('DOMContentLoaded', async ()=>{
+  await loadConfig();
+  const to=new Date(), from=new Date(); from.setDate(1);
+  el('dt-from').value = from.toISOString().slice(0,10);
+  el('dt-to').value = to.toISOString().slice(0,10);
+});
+</script>
+</body>
+</html>
