@@ -37,7 +37,7 @@ async function fetchCreatives(){
     const chunks=[]; for(let i=0;i<adIds.length;i+=50) chunks.push(adIds.slice(i,i+50));
     const adCreativeIdMap={};
     for(const chunk of chunks){
-      const json = await graphFetch(`v17.0/&ids=${chunk.join(',')}&fields=id,name,creative{id}`);
+      const json = await graphFetch(`v17.0/?ids=${chunk.join(',')}&fields=id,name,creative{id}`);
       if(!json.error) Object.entries(json).forEach(([adId,ad])=>{ if(ad.creative?.id) adCreativeIdMap[adId]=ad.creative.id; });
     }
     if(status) status.textContent='Fetching creative thumbnails...';
@@ -45,7 +45,7 @@ async function fetchCreatives(){
     const crDataMap={};
     const crChunks=[]; for(let i=0;i<crIds.length;i+=50) crChunks.push(crIds.slice(i,i+50));
     for(const chunk of crChunks){
-      const json = await graphFetch(`v17.0/&ids=${chunk.join(',')}&fields=id,name,title,body,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec,asset_feed_spec&thumbnail_width=1080&thumbnail_height=1080`);
+      const json = await graphFetch(`v17.0/?ids=${chunk.join(',')}&fields=id,name,title,body,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec,asset_feed_spec&thumbnail_width=1080&thumbnail_height=1080`);
       if(!json.error) Object.assign(crDataMap, json);
     }
     // full-res images via hash
@@ -68,7 +68,7 @@ async function fetchCreatives(){
       const sChunks=[]; for(let i=0;i<storyIds.length;i+=50) sChunks.push(storyIds.slice(i,i+50));
       for(const chunk of sChunks){
         try{
-          const json = await graphFetch(`v17.0/&ids=${chunk.join(',')}&fields=full_picture,attachments{media_type,media{image{src,width,height}}}`);
+          const json = await graphFetch(`v17.0/?ids=${chunk.join(',')}&fields=full_picture,attachments{media_type,media{image{src,width,height}}}`);
           if(!json.error) Object.entries(json).forEach(([id,post])=>{
             const attachImg = post.attachments?.data?.[0]?.media?.image;
             const pic = attachImg?.src || post.full_picture || '';
