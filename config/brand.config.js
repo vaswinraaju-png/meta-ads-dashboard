@@ -20,19 +20,19 @@ window.BRAND = {
   // this file only controls visual identity.
 
   colors: {
-    primary:   "#141821",   // main dark surface (nav, headers)
-    accent:    "#e8b64a",   // highlight / CTA color
-    accent2:   "#4a90e2",   // secondary accent (links, active states)
-    success:   "#2f9e44",
-    warning:   "#e8590c",
-    danger:    "#d0342c",
+    primary:   "#0a0e17",   // Meta Ads Manager sidebar navy-black
+    accent:    "#0866ff",   // Meta blue (links, CTAs)
+    accent2:   "#0866ff",   // secondary accent, same blue family
+    success:   "#31a24c",   // Meta "Active" status green
+    warning:   "#f7b928",
+    danger:    "#e41e3f",
     bg:        "#ffffff",
-    surface:   "#f6f7f9",
-    surface2:  "#eceef2",
-    border:    "#e1e4ea",
-    border2:   "#c7ccd6",
-    text:      "#181c25",
-    muted:     "#8891a3"
+    surface:   "#f5f6f7",
+    surface2:  "#ebedf0",
+    border:    "#e4e6e9",
+    border2:   "#ced0d4",
+    text:      "#050505",
+    muted:     "#65676b"
   },
 
   fonts: {
