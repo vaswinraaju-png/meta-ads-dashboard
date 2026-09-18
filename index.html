@@ -19,6 +19,7 @@
       <button class="sidebar-tab active" id="stab-overview" onclick="switchPage('overview')" title="Overview">▦</button>
       <button class="sidebar-tab" id="stab-creatives" onclick="switchPage('creatives')" title="Creatives">▤</button>
       <button class="sidebar-tab" id="stab-social" onclick="switchPage('social')" title="Social">◎</button>
+      <button class="sidebar-tab" id="stab-settings" onclick="switchPage('settings')" title="Settings">⚙</button>
     </div>
   </nav>
 
@@ -29,7 +30,7 @@
         <span class="acct-chip" id="brand-sub">Ads Dashboard</span>
       </div>
       <div class="top-bar-right">
-        <button class="btn-secondary" onclick="handleLogout()">Log Out</button>
+        <button class="btn-secondary" onclick="switchPage('settings')">Settings</button>
       </div>
     </div>
 
@@ -37,6 +38,7 @@
       <button class="section-tab active" id="tab-overview" onclick="switchPage('overview')">Overview</button>
       <button class="section-tab" id="tab-creatives" onclick="switchPage('creatives')">Creatives</button>
       <button class="section-tab" id="tab-social" onclick="switchPage('social')">Social</button>
+      <button class="section-tab" id="tab-settings" onclick="switchPage('settings')">Settings</button>
     </div>
 
     <div class="control-strip">
@@ -324,12 +326,45 @@
       </div>
     </div>
   </div>
+  <!-- ══ SETTINGS ══ -->
+  <div class="page-view" id="page-settings">
+    <div class="section-title">Meta Credentials</div>
+    <div class="plan-box" style="max-width:520px;">
+      <div style="margin-bottom:12px;font-size:12px;color:var(--c-muted);line-height:1.6;">
+        Stored only in this browser's local storage. Requests go directly from your browser to the Facebook Graph API — nothing is sent to any third-party server.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div class="field-lbl" style="font-size:9px;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px;">Access Token</div>
+          <input type="password" id="set-token" placeholder="EAAG..." style="width:100%;padding:8px 10px;border:1px solid var(--c-border2);border-radius:6px;font-family:var(--f-mono);font-size:12px;">
+        </div>
+        <div>
+          <div class="field-lbl" style="font-size:9px;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px;">Ad Account ID</div>
+          <input type="text" id="set-acct" placeholder="act_1234567890" style="width:100%;padding:8px 10px;border:1px solid var(--c-border2);border-radius:6px;font-family:var(--f-mono);font-size:12px;">
+        </div>
+        <div>
+          <div class="field-lbl" style="font-size:9px;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px;">Facebook Page ID</div>
+          <input type="text" id="set-page" placeholder="1234567890" style="width:100%;padding:8px 10px;border:1px solid var(--c-border2);border-radius:6px;font-family:var(--f-mono);font-size:12px;">
+        </div>
+        <div>
+          <div class="field-lbl" style="font-size:9px;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px;">Instagram Business ID</div>
+          <input type="text" id="set-ig" placeholder="1234567890" style="width:100%;padding:8px 10px;border:1px solid var(--c-border2);border-radius:6px;font-family:var(--f-mono);font-size:12px;">
+        </div>
+      </div>
+      <div class="plan-actions">
+        <button class="pill-btn dark" onclick="saveSettings()">Save</button>
+        <button class="pill-btn" onclick="clearSettings()">Clear</button>
+      </div>
+      <div id="settings-ok" class="hidden" style="font-size:11px;color:var(--c-success);margin-top:8px;"></div>
+    </div>
+  </div>
 </main>
   </div>
 </div>
 
 <script src="config/brand.config.js"></script>
 <script src="js/core.js"></script>
+<script src="js/pages/settings.js"></script>
 <script src="js/pages/overview.js"></script>
 <script src="js/pages/creatives.js"></script>
 <script src="js/pages/social.js"></script>
@@ -343,12 +378,8 @@ function switchPage(p){
   el('stab-'+p)?.classList.add('active');
   if(p==='social' && !window._socFetched){ window._socFetched=true; fetchSocial(); }
 }
-async function handleLogout(){
-  await fetch('/auth/logout', {method:'POST'});
-  window.location.href = '/login.html';
-}
-window.addEventListener('DOMContentLoaded', async ()=>{
-  await loadConfig();
+window.addEventListener('DOMContentLoaded', ()=>{
+  loadConfig();
   const to=new Date(), from=new Date(); from.setDate(1);
   el('dt-from').value = from.toISOString().slice(0,10);
   el('dt-to').value = to.toISOString().slice(0,10);

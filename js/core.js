@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────
-// CORE — shared state, config load, formatters, filter engine
+// CORE — shared state, config (from localStorage), formatters,
+// direct-to-Graph-API fetch (no backend dependency)
 // ─────────────────────────────────────────────────────────────
 const APP = {
-  ACCT: '', SOC_FB_PAGE_ID: '', SOC_IG_ID: '',
-  isAdmin: false, currentEmail: '',
+  TOKEN: '', ACCT: '', SOC_FB_PAGE_ID: '', SOC_IG_ID: '',
   allCamps: [], allAds: [], allCreatives: [],
   dailyRaw: [], from: '', to: '',
   currentCamp: 'ALL', currentAdset: 'ALL', currentAd: 'ALL',
@@ -12,6 +12,7 @@ const APP = {
 
 const LS_TARGETS = 'wl_targets_v1';
 const LS_EXP = 40 * 24 * 60 * 60 * 1000;
+const GRAPH = 'https://graph.facebook.com';
 
 function el(id){ return document.getElementById(id); }
 function fmt(n,d=0){ if(n==null||isNaN(n)) return '—'; return Number(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d}); }
@@ -19,7 +20,6 @@ function fmtC(n){ if(!n||isNaN(n)) return '—'; return '₹'+fmt(n,0); }
 function trunc(s,n=60){ if(!s) return ''; return s.length>n ? s.slice(0,n)+'…' : s; }
 function escapeHtml(str){ if(!str) return ''; return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
-// Lead count: max of any lead action type to avoid double counting
 function getLeads(actions){
   if(!actions || !actions.length) return 0;
   const TYPES=['lead','onsite_conversion.lead_grouped','onsite_conversion.messaging_first_reply','contact_total','leadgen.other'];
@@ -75,24 +75,34 @@ function applyBrand(){
   if(favicon && b.favicon) favicon.href = b.favicon;
 }
 
-async function loadConfig(){
+// ── CONFIG: read Meta credentials from localStorage (set on Settings page) ──
+function loadConfig(){
   try{
-    const meRes = await fetch('/auth/me').then(x=>x.json());
-    APP.currentEmail = meRes.email;
-    const res = await fetch('/api/config').then(x=>x.json());
-    APP.ACCT = res.account;
-    APP.SOC_FB_PAGE_ID = res.fbPageId;
-    APP.SOC_IG_ID = res.igId;
-  }catch(err){
-    showErr('Failed to load application configuration: '+err.message);
+    const k = JSON.parse(localStorage.getItem('wl_meta_keys_v1') || '{}');
+    APP.TOKEN = k.token || '';
+    APP.ACCT = k.acct || '';
+    APP.SOC_FB_PAGE_ID = k.pageId || '';
+    APP.SOC_IG_ID = k.igId || '';
+  }catch(e){}
+  if(!APP.TOKEN || !APP.ACCT){
+    showErr('No Meta access token / ad account set. Go to Settings to add them.');
   }
+}
+
+// ── Direct Graph API call — replaces the old backend proxy ──
+// endpoint: e.g. "v17.0/act_123/insights?fields=..." (no access_token param — added here)
+async function graphFetch(endpoint){
+  const sep = endpoint.includes('?') ? '&' : '?';
+  const url = `${GRAPH}/${endpoint}${sep}access_token=${encodeURIComponent(APP.TOKEN)}`;
+  const res = await fetch(url);
+  return res.json();
 }
 
 function showErr(m){ const e=el('error-box'); if(!e) return; e.textContent=m; e.classList.remove('hidden'); }
 function hideErr(){ const e=el('error-box'); if(e) e.classList.add('hidden'); }
 function showLoad(v){ const e=el('loading-box'); if(!e) return; if(v){ e.textContent = typeof v==='string' ? v : 'Fetching from Facebook Graph API'; e.classList.remove('hidden'); } else e.classList.add('hidden'); }
 
-// ── CASCADING FILTERS (no program dimension) ──
+// ── CASCADING FILTERS ──
 function rebuildCampDropdown(){
   const camps=[...new Set(APP.allCamps.map(c=>c.campaign))].sort();
   const s=el('camp-select');
@@ -133,9 +143,10 @@ function setCampFilter(v){ APP.currentCamp=v; APP.currentAdset='ALL'; APP.curren
 function setAdsetFilter(v){ APP.currentAdset=v; APP.currentAd='ALL'; rebuildAdDropdown(); window.applyAllFilters && window.applyAllFilters(); }
 function setAdFilter(v){ APP.currentAd=v; window.applyAllFilters && window.applyAllFilters(); }
 
-// ── FETCH ALL (adset + ad level insights, budgets) ──
+// ── FETCH ALL (adset + ad level insights) — direct to Graph API ──
 async function fetchAll(){
   hideErr();
+  if(!APP.TOKEN || !APP.ACCT){ showErr('Add your Meta access token and ad account ID in Settings first.'); return; }
   const from=el('dt-from').value, to=el('dt-to').value;
   if(!from||!to){ showErr('Select both dates.'); return; }
   APP.from=from; APP.to=to;
@@ -144,18 +155,17 @@ async function fetchAll(){
     const insFields='campaign_name,adset_name,spend,impressions,clicks,frequency,cpm,ctr,actions';
     const adInsFields='ad_id,ad_name,campaign_name,adset_name,adset_id,spend,impressions,reach,clicks,frequency,cpm,ctr,actions';
 
-    const [r1,r2,r3] = await Promise.all([
-      fetch(`/api/meta-proxy?endpoint=v17.0/${APP.ACCT}/insights?fields=${insFields}&level=adset&time_range={"since":"${from}","until":"${to}"}&limit=500&tokenType=ad`),
-      fetch(`/api/meta-proxy?endpoint=v17.0/${APP.ACCT}/insights?fields=spend,actions&level=account&time_increment=1&time_range={"since":"${from}","until":"${to}"}&limit=90&tokenType=ad`),
-      fetch(`/api/meta-proxy?endpoint=v17.0/${APP.ACCT}/insights?fields=${adInsFields}&level=ad&time_range={"since":"${from}","until":"${to}"}&limit=500&tokenType=ad`)
+    const [ins, daily, adIns] = await Promise.all([
+      graphFetch(`v17.0/${APP.ACCT}/insights?fields=${insFields}&level=adset&time_range={"since":"${from}","until":"${to}"}&limit=500`),
+      graphFetch(`v17.0/${APP.ACCT}/insights?fields=spend,actions&level=account&time_increment=1&time_range={"since":"${from}","until":"${to}"}&limit=90`),
+      graphFetch(`v17.0/${APP.ACCT}/insights?fields=${adInsFields}&level=ad&time_range={"since":"${from}","until":"${to}"}&limit=500`)
     ]);
-    const [ins,daily,adIns] = await Promise.all([r1.json(),r2.json(),r3.json()]);
 
     if(ins.error){
       const c=ins.error.code;
-      if(c===190) showErr('Token expired or invalid. Regenerate your access token.');
-      else if(c===100) showErr('Invalid Ad Account ID.');
-      else if(c===10||c===200) showErr('Permission denied: need ads_read + read_insights. '+ins.error.message);
+      if(c===190) showErr('Token expired or invalid. Update it in Settings.');
+      else if(c===100) showErr('Invalid Ad Account ID. Check Settings.');
+      else if(c===10||c===200) showErr('Permission denied: token needs ads_read + read_insights. '+ins.error.message);
       else showErr('FB Ads API error ('+c+'): '+ins.error.message);
       showLoad(false); return;
     }
@@ -169,8 +179,7 @@ async function fetchAll(){
     let pageCount=1;
     while(nextCursor && pageCount<10){
       showLoad(`Fetching ads page ${pageCount+1}...`);
-      const nextRes = await fetch(`/api/meta-proxy?endpoint=v17.0/${APP.ACCT}/insights?fields=${adInsFields}&level=ad&time_range={"since":"${from}","until":"${to}"}&limit=500&after=${nextCursor}&tokenType=ad`);
-      const nextData = await nextRes.json();
+      const nextData = await graphFetch(`v17.0/${APP.ACCT}/insights?fields=${adInsFields}&level=ad&time_range={"since":"${from}","until":"${to}"}&limit=500&after=${nextCursor}`);
       if(nextData.error || !nextData.data?.length) break;
       adRows = adRows.concat(nextData.data);
       nextCursor = nextData.paging?.cursors?.after;

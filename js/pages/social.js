@@ -37,7 +37,7 @@ function hideSocErr(){ el('soc-error').classList.add('hidden'); }
 async function getPageToken(pageId){
   if(_pageToken) return _pageToken;
   try{
-    const r = await fetch(`/api/meta-proxy?endpoint=v17.0/${pageId}?fields=access_token&tokenType=social`).then(x=>x.json());
+    const r = await graphFetch(`v17.0/${pageId}?fields=access_token`);
     if(r.access_token){ _pageToken=r.access_token; return _pageToken; }
     if(r.error && r.error.code===190) socErr('Token expired — please regenerate your access token.');
   }catch(e){}
@@ -46,6 +46,7 @@ async function getPageToken(pageId){
 
 async function fetchSocial(){
   hideSocErr();
+  if(!APP.TOKEN){ socErr('Add your Meta access token in Settings first.'); return; }
   const pageId=APP.SOC_FB_PAGE_ID, igId=APP.SOC_IG_ID;
   const from=el('soc-from').value, to=el('soc-to').value;
   if(!from||!to){ socErr('Select date range.'); return; }
@@ -72,12 +73,12 @@ async function fetchSocial(){
 async function fetchIG(igId, since, until){
   const igMetrics='impressions,reach,profile_views,follower_count,website_clicks,email_contacts,phone_call_clicks';
   const [profileRes, insRes, mediaRes] = await Promise.all([
-    fetch(`/api/meta-proxy?endpoint=v17.0/${igId}&fields=username,name,followers_count,follows_count,media_count,biography&tokenType=social`),
-    fetch(`/api/meta-proxy?endpoint=v17.0/${igId}/insights&metric=${igMetrics}&since=${since}&until=${until}&period=day&tokenType=social`),
-    fetch(`/api/meta-proxy?endpoint=v17.0/${igId}/media&fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=50&tokenType=social`)
+    graphFetch(`v17.0/${igId}?fields=username,name,followers_count,follows_count,media_count,biography`),
+    graphFetch(`v17.0/${igId}/insights?metric=${igMetrics}&since=${since}&until=${until}&period=day`),
+    graphFetch(`v17.0/${igId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=50`)
   ]);
   let followerInsRes=null;
-  try{ const fr=await fetch(`/api/meta-proxy?endpoint=v17.0/${igId}/insights?metric=follower_count&since=${since}&until=${until}&period=day&tokenType=social`); followerInsRes=await fr.json(); }catch(e){}
+  try{ followerInsRes = await graphFetch(`v17.0/${igId}/insights?metric=follower_count&since=${since}&until=${until}&period=day`); }catch(e){}
   const [profile, ins, mediaData] = await Promise.all([profileRes.json(), insRes.json(), mediaRes.json()]);
   if(profile.error){
     const c=profile.error.code;
@@ -107,7 +108,7 @@ async function fetchIG(igId, since, until){
     const mediaInsights = await Promise.all(media.slice(0,50).map(m=>{
       const isVideo = m.media_type==='VIDEO'||m.media_type==='REELS';
       const metrics = isVideo ? 'impressions,reach,saved,video_views,plays,shares' : 'impressions,reach,saved,shares';
-      return fetch(`/api/meta-proxy?endpoint=v17.0/${m.id}/insights?metric=${metrics}&period=lifetime&tokenType=ad`).then(r=>r.json()).catch(()=>({data:[]}));
+      return graphFetch(`v17.0/${m.id}/insights?metric=${metrics}&period=lifetime`).catch(()=>({data:[]}));
     }));
     media.slice(0,50).forEach((m,i)=>{
       const ins={}; const resp=mediaInsights[i];
@@ -180,8 +181,7 @@ async function fetchIG(igId, since, until){
 
 // ── FACEBOOK ──
 async function fetchFBPage(pageId, since, until, pageToken){
-  const pt = pageToken || _pageToken;
-  const tokenParam = pt ? `tokenType=dynamic&dynamicToken=${pt}` : `tokenType=social`;
+  const pt = pageToken || _pageToken || APP.TOKEN;
   const pageMetrics=[
     'page_impressions','page_impressions_organic','page_impressions_paid','page_impressions_viral',
     'page_reach','page_reach_organic','page_reach_paid',
@@ -189,12 +189,11 @@ async function fetchFBPage(pageId, since, until, pageToken){
     'page_fan_adds','page_fan_removes','page_actions_post_reactions_total',
     'page_total_actions','page_clicks_by_type'
   ].join(',');
-  const [profileRes, insRes, postsRes] = await Promise.all([
-    fetch(`/api/meta-proxy?endpoint=v17.0/${pageId}?fields=name,fan_count,followers_count&${tokenParam}`),
-    fetch(`/api/meta-proxy?endpoint=v17.0/${pageId}/insights?metric=${pageMetrics}&since=${since}&until=${until}&period=day&${tokenParam}`),
-    fetch(`/api/meta-proxy?endpoint=v17.0/${pageId}/posts?fields=message,story,created_time,full_picture,permalink_url&since=${since}&until=${until}&limit=100&${tokenParam}`)
+  const [profile, ins, postsData] = await Promise.all([
+    fetch(`${GRAPH}/v17.0/${pageId}?fields=name,fan_count,followers_count&access_token=${encodeURIComponent(pt)}`).then(r=>r.json()),
+    fetch(`${GRAPH}/v17.0/${pageId}/insights?metric=${pageMetrics}&since=${since}&until=${until}&period=day&access_token=${encodeURIComponent(pt)}`).then(r=>r.json()),
+    fetch(`${GRAPH}/v17.0/${pageId}/posts?fields=message,story,created_time,full_picture,permalink_url&since=${since}&until=${until}&limit=100&access_token=${encodeURIComponent(pt)}`).then(r=>r.json())
   ]);
-  const [profile, ins, postsData] = await Promise.all([profileRes.json(), insRes.json(), postsRes.json()]);
   if(profile.error){
     const c=profile.error.code;
     if(c===190) throw new Error('Token expired');
@@ -240,7 +239,7 @@ async function fetchFBPage(pageId, since, until, pageToken){
   if(posts.length>0){
     socLoad(`Fetching insights for ${posts.length} posts...`);
     const postInsights = await Promise.all(posts.slice(0,30).map(p=>
-      fetch(`/api/meta-proxy?endpoint=v17.0/${p.id}/insights?metric=post_impressions,post_reach,post_engaged_users,post_clicks,post_reactions_by_type_total,post_video_views&tokenType=dynamic&dynamicToken=${pt}`).then(r=>r.json()).catch(()=>({data:[]}))
+      fetch(`${GRAPH}/v17.0/${p.id}/insights?metric=post_impressions,post_reach,post_engaged_users,post_clicks,post_reactions_by_type_total,post_video_views&access_token=${encodeURIComponent(pt)}`).then(r=>r.json()).catch(()=>({data:[]}))
     ));
     posts.slice(0,30).forEach((p,i)=>{
       const ins={};
@@ -411,10 +410,9 @@ function renderIGMedia(){
 
 // ── INBOX ──
 async function fetchFBConversations(pageId, pageToken){
-  const pt = pageToken || _pageToken;
-  const tokenParam = pt ? `tokenType=dynamic&dynamicToken=${pt}` : `tokenType=social`;
+  const pt = pageToken || _pageToken || APP.TOKEN;
   try{
-    const r = await fetch(`/api/meta-proxy?endpoint=v17.0/${pageId}/conversations?fields=id,snippet,unread_count,updated_time,participants,messages.limit(1){from,created_time,message}&limit=100&${tokenParam}`).then(x=>x.json());
+    const r = await fetch(`${GRAPH}/v17.0/${pageId}/conversations?fields=id,snippet,unread_count,updated_time,participants,messages.limit(1){from,created_time,message}&limit=100&access_token=${encodeURIComponent(pt)}`).then(x=>x.json());
     if(r.error){
       const tbody=el('fb-conv-tbody');
       if(tbody) tbody.innerHTML=`<tr><td colspan="5" class="text-muted" style="padding:12px 14px">⚠ Inbox unavailable — ${escapeHtml(r.error.message)}</td></tr>`;
@@ -467,7 +465,7 @@ function renderFBConversations(){
 async function fetchIGDMs(igId){
   const tbody = el('ig-dm-tbody');
   try{
-    const r = await fetch(`/api/meta-proxy?endpoint=v17.0/${igId}/conversations&platform=instagram&fields=id,snippet,unread_count,updated_time,participants,messages.limit(1){from,created_time,message}&limit=100&tokenType=social`).then(x=>x.json());
+    const r = await graphFetch(`v17.0/${igId}/conversations?platform=instagram&fields=id,snippet,unread_count,updated_time,participants,messages.limit(1){from,created_time,message}&limit=100`);
     if(r.error){
       if(tbody) tbody.innerHTML=`<tr><td colspan="5" class="text-muted" style="padding:12px 14px">⚠ IG DMs unavailable — ${escapeHtml(r.error.message)}</td></tr>`;
       return;
